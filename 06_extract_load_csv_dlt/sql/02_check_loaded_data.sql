@@ -1,13 +1,19 @@
 -- Switch to the role used to read the movies data.
 -- This role must have permission to access the objects below.
-USE ROLE movies_reader;
+USE ROLE movies_reader_role;
+
+SHOW DATABASES;
 
 -- Select the database we want to work with.
 USE DATABASE movies;
+DESCRIBE DATABASE movies;
+
 
 -- List the schemas in this database that your role can see.
 -- Schemas are containers that organize tables and other objects.
 SHOW SCHEMAS;
+DESCRIBE SCHEMA staging;
+
 
 -- Select the staging schema where the pipeline loaded the data.
 USE SCHEMA staging;
@@ -21,7 +27,7 @@ USE WAREHOUSE dev_wh;
 -- Display all columns and rows from the netflix table.
 -- With the database and schema selected above,
 -- netflix refers to movies.staging.netflix.
-SELECT * FROM netflix;
+SELECT * FROM staging.netflix;
 
 -- Show the table's structure, including column names and data types.
 -- DESC is short for DESCRIBE.
