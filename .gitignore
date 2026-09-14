@@ -14,8 +14,11 @@ target/
 dbt_packages/
 logs/
 
-# dlt
+# dlt 
+# secrets to connection details to snowflake
 **/.dlt/
+setup_user.sql
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

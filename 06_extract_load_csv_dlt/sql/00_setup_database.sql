@@ -11,3 +11,7 @@ CREATE DATABASE IF NOT EXISTS movies;
 -- before cleaning or transforming it.
 -- IF NOT EXISTS skips creation if this schema already exists.
 CREATE SCHEMA IF NOT EXISTS movies.staging;
+
+
+-- CHeck DB here
+DESCRIBE DATABASE movies;
