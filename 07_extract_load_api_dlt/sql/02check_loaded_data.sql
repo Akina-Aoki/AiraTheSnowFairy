@@ -40,5 +40,6 @@ FROM staging.data_field_job_ads;
 -- Read every column and every row from the table.
 -- The asterisk (*) means "all columns".
 -- For a quick preview, add LIMIT 10 before the semicolon.
-SELECT *
-FROM staging.data_field_job_ads;
+-- SELECT *
+-- FROM staging.data_field_job_ads
+-- WHERE employer_workplace = 'ATG';
