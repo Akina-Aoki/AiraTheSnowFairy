@@ -73,13 +73,13 @@ def parking_resource():
 
     Stockholm Parking API
             ↓
-    get_parking_data()
+    requests
             ↓
     parking_resource()
             ↓
-    dlt pipeline
+    dlt
             ↓
-    Snowflake staging
+    IFOOD.STAGING.PARKING_REGULATIONS
     """
 
     # Call the helper function to get the API response.
