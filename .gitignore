@@ -16,6 +16,7 @@ logs/
 
 # dlt 
 # secrets to connection details to snowflake
+.dlt/secrets.toml
 **/.dlt/
 setup_user.sql
 06_extract_load_csv_dlt/sql/01_setup_user_role.sql
