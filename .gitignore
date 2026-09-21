@@ -22,6 +22,7 @@ setup_user.sql
 06_extract_load_csv_dlt/sql/01_setup_user_role.sql
 07_extract_load_api_dlt/dlt_code/sql/00_setup_user_role.sql
 exercises/exercise1/03_setup_user.sql
+09_setup_dbt/sql/01_setup_user.sql
 
 
 # Byte-compiled / optimized / DLL files

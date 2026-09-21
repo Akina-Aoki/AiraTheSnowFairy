@@ -27,7 +27,6 @@ SELECT
     scope_of_work__max,
     employer__name,
     salary_type__label,
-    salary_description,
     duration__label,
     logo_url,
     employer__workplace,
