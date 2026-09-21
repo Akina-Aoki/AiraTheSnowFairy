@@ -176,3 +176,4 @@ dbt from dbt docs
 - [Jinja and macros](https://docs.getdbt.com/docs/build/jinja-macros)
 - [sources](https://docs.getdbt.com/docs/build/sources)
 - [project variables](https://docs.getdbt.com/docs/build/project-variables)
+airarandompassword
