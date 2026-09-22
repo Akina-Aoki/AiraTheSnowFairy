@@ -14,15 +14,26 @@ target/
 dbt_packages/
 logs/
 
-# dlt 
-# secrets to connection details to snowflake
-.dlt/secrets.toml
+# ==================================================
+# Secrets / credentials
+# ==================================================
+
+# dlt credentials
 **/.dlt/
-setup_user.sql
+
+# Environment variables
+.env
+.env.*
+
+# Streamlit credentials
+.streamlit/secrets.toml
+
+# SQL files containing local Snowflake credentials
 06_extract_load_csv_dlt/sql/01_setup_user_role.sql
-07_extract_load_api_dlt/dlt_code/sql/00_setup_user_role.sql
-exercises/exercise1/03_setup_user.sql
+07_extract_load_api_dlt/sql/00_setup_user_role.sql
+09_setup_dbt/sql/find_account.sql
 09_setup_dbt/sql/01_setup_user.sql
+exercises/exercise1/dlt_code/03_setup_user.sql
 
 
 # Byte-compiled / optimized / DLL files
