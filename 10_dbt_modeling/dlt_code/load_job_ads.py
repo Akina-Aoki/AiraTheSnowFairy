@@ -5,6 +5,17 @@
 #                                        #
 #========================================#
 
+"""
+
+    JobTech API
+        ↓
+    dlt script
+        ↓
+    Snowflake
+        ↓
+    job_ads.staging
+"""
+
 import dlt
 import requests
 import json

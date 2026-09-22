@@ -30,6 +30,17 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   dbt_code:
-    # Config indicated by + and applies to all files under models/example/
-    example:
-      +materialized: view
+    +materialized: table
+
+    src:    # materialized = temporary      src = testing on src data to make sure data from src is validated before moving on so pipeline don't break
+      +materialized: ephemeral
+      +schema: staging        # where the data will land
+
+    dim:                      # refined data lands in warehouse schema for fct and dim tables
+      +schema: warehouse
+
+    fct:
+      +schema: warehouse
+
+    mart:                     # DBT models resides here
+      +schema: marts
