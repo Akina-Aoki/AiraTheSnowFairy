@@ -3,6 +3,7 @@
 # `name` = cleaner dbt name used in source() references.
 # If the Snowflake table name changes, update the identifier here
 # instead of changing every downstream dbt model.
+# This also helps the code to be dry.
 # stg_ads here is just the dbt source name. It does not create or rename a Snowflake table called stg_ads.
 sources:
   - name: job_ads            # Name of this source group in dbt
@@ -11,5 +12,5 @@ sources:
     tables:
     # If the Snowflake table name changes, only update `identifier` here.
     # Other dbt models can keep using the same source name: `stg_ads`.
-      - name: stg_ads        # dbt name we will use to refer to this table
+      - name: stg_ads        # dbt name we will use to refer/rename to this table
         identifier: technical_field_job_ads  # Actual table name in Snowflake

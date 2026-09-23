@@ -1,0 +1,46 @@
+{
+  "version": "3.0.0",
+  "darkMode": true,
+  "gridEnabling": false,
+  "currentViewName": null,
+  "defaultView": {
+    "detailLevel": "All",
+    "relationshipMode": "All",
+    "tablePositions": [
+      {
+        "name": "fct_healthcare",
+        "schemaName": "public",
+        "x": 465.4236091968565,
+        "y": 219.6708004252185
+      },
+      {
+        "name": "dim_date",
+        "schemaName": "public",
+        "x": 14.825424883233524,
+        "y": -33.20724907215644
+      },
+      {
+        "name": "dim_patient",
+        "schemaName": "public",
+        "x": 41.666961273952,
+        "y": 483.3963754639217
+      },
+      {
+        "name": "dim_doctor",
+        "schemaName": "public",
+        "x": 805.9443921886212,
+        "y": 139.84575393052017
+      },
+      {
+        "name": "dim_hospital",
+        "schemaName": "public",
+        "x": 803.0466871104962,
+        "y": 433.92750927843565
+      }
+    ],
+    "tableGroupCollapseStates": [],
+    "stickyNoteLayouts": [],
+    "referencePaths": []
+  },
+  "views": {}
+}
