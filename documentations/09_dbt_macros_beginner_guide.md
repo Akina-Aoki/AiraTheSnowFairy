@@ -1,37 +1,361 @@
 # dbt Macros — Beginner Guide
 
-## What is a macro in dbt?
-
-A **macro** in dbt is a reusable piece of SQL logic.
-
-Instead of writing the same SQL code again and again inside different models, you can write the logic once inside the `macros/` folder and then call it wherever you need it.
-
-You can think of a macro like a small SQL function.
+This guide explains **what dbt macros do**, **which files connect to each other**, and **where to look when something breaks**.
 
 ---
 
-## Where macros live
+# 1. Big picture: how the whole project connects
 
-In this project, macros are stored here:
+Your project has two main parts:
 
 ```text
 09_lecture_dbt/
+│
+├── dlt_code/
+│   ├── .dlt/
+│   │   └── secrets.toml
+│   └── load_job_ads.py
+│
 └── dbt_code/
-    ├── macros/
-    │   ├── generate_schema_name.sql
-    │   ├── string_utils.sql
-    │   └── translate_headline.sql
+    ├── dbt_project.yml
+    ├── models/
+    │   ├── staging/
+    │   │   └── original_headline.sql
+    │   └── refined/
+    │       ├── updated_headline.sql
+    │       └── updated_headline_macro.sql
     │
-    └── models/
+    └── macros/
+        ├── translate_headline.sql
+        ├── string_utils.sql
+        └── generate_schema_name.sql
 ```
 
-dbt automatically looks inside the `macros/` folder when the project runs.
+The full flow is:
+
+```text
+JobTech API
+    ↓
+dlt_code/load_job_ads.py
+    ↓
+Snowflake raw table
+JOB_ADS.STAGING.DATA_FIELD_JOB_ADS
+    ↓
+dbt model: original_headline.sql
+    ↓
+dbt model: updated_headline.sql
+    ↓
+dbt model: updated_headline_macro.sql
+```
+
+Macros are used **inside the dbt part**.
 
 ---
 
-# 1. `translate_headline.sql`
+# 2. Files to check, in order
 
-This macro contains transformation logic for job titles.
+If you want to understand how everything connects, check the files in this order.
+
+## File 1 — `dlt_code/load_job_ads.py`
+
+This file gets the raw data from the API and loads it into Snowflake.
+
+Important line:
+
+```python
+run_pipeline(table_name="data_field_job_ads")
+```
+
+That means dlt loads into:
+
+```text
+JOB_ADS.STAGING.DATA_FIELD_JOB_ADS
+```
+
+So if your dbt model expects `data_field_job_ads`, this is the file that must create/populate it.
+
+---
+
+## File 2 — `dlt_code/.dlt/secrets.toml`
+
+This file tells dlt how to connect to Snowflake.
+
+Example:
+
+```toml
+[destination.snowflake.credentials]
+
+database = "job_ads"
+username = "extract_loader"
+password = "..."
+host = "..."
+warehouse = "dev_wh"
+role = "job_ads_dlt_role"
+```
+
+This controls:
+
+```text
+Which Snowflake account?
+Which database?
+Which warehouse?
+Which user?
+Which role?
+```
+
+If dlt cannot connect, check this file.
+
+---
+
+## File 3 — `dbt_code/dbt_project.yml`
+
+This file tells dbt how the dbt project is structured.
+
+Example:
+
+```yaml
+models:
+  dbt_code:
+
+    staging:
+      +schema: staging
+      +materialized: table
+
+    refined:
+      +schema: warehouse
+      +materialized: view
+```
+
+This means:
+
+```text
+models/staging/
+    ↓
+Snowflake schema: STAGING
+materialized as TABLE
+
+models/refined/
+    ↓
+Snowflake schema: WAREHOUSE
+materialized as VIEW
+```
+
+So if dbt is putting models in the wrong schema, check:
+
+```text
+dbt_project.yml
+```
+
+---
+
+## File 4 — `~/.dbt/profiles.yml`
+
+This file is outside your project folder.
+
+It tells dbt how to connect to Snowflake.
+
+Your connection uses values like:
+
+```text
+database: job_ads
+warehouse: dev_wh
+role: job_ads_dbt_role
+schema: warehouse
+user: transformer
+```
+
+So:
+
+```text
+dbt_project.yml
+```
+
+controls the dbt project behavior,
+
+while:
+
+```text
+profiles.yml
+```
+
+controls the Snowflake connection.
+
+If `dbt debug` fails, check `profiles.yml`.
+
+---
+
+# 3. How the dbt models connect
+
+Now we move into the actual dbt model flow.
+
+---
+
+## `original_headline.sql`
+
+This is your first dbt model.
+
+```sql
+SELECT
+    headline
+
+FROM job_ads.staging.data_field_job_ads
+```
+
+It reads directly from the raw Snowflake table:
+
+```text
+JOB_ADS.STAGING.DATA_FIELD_JOB_ADS
+```
+
+and creates:
+
+```text
+JOB_ADS.STAGING.ORIGINAL_HEADLINE
+```
+
+because the file is inside:
+
+```text
+models/staging/
+```
+
+Flow:
+
+```text
+DATA_FIELD_JOB_ADS
+        ↓
+original_headline.sql
+        ↓
+STAGING.ORIGINAL_HEADLINE
+```
+
+---
+
+# 4. How `ref()` connects dbt models
+
+Inside your other models you use:
+
+```sql
+{{ ref('original_headline') }}
+```
+
+`ref()` means:
+
+> Use the dbt model called `original_headline`.
+
+So dbt knows:
+
+```text
+updated_headline
+depends on
+original_headline
+```
+
+Example:
+
+```sql
+WITH staging_data AS (
+
+    SELECT *
+    FROM {{ ref('original_headline') }}
+
+)
+```
+
+dbt automatically finds the correct Snowflake object.
+
+You do not need to write:
+
+```sql
+FROM job_ads.staging.original_headline
+```
+
+because `ref()` handles that connection.
+
+---
+
+# 5. `updated_headline.sql`
+
+This model uses:
+
+```sql
+{{ ref('original_headline') }}
+```
+
+So its input is:
+
+```text
+STAGING.ORIGINAL_HEADLINE
+```
+
+Then it applies a normal SQL `CASE`:
+
+```sql
+CASE
+    WHEN headline = 'Data engineer'
+    THEN 'Junior data engineer'
+
+    ELSE headline
+END AS job_title
+```
+
+So the flow is:
+
+```text
+STAGING.ORIGINAL_HEADLINE
+        ↓
+ref('original_headline')
+        ↓
+CASE transformation
+        ↓
+WAREHOUSE.UPDATED_HEADLINE
+```
+
+This model does **not** use your custom macro.
+
+---
+
+# 6. `updated_headline_macro.sql`
+
+This model also starts with:
+
+```sql
+{{ ref('original_headline') }}
+```
+
+But instead of writing the `CASE` logic directly, it calls:
+
+```sql
+{{ translate_headline('headline') }}
+```
+
+This tells dbt:
+
+> Find the macro called `translate_headline` and insert its SQL logic here.
+
+Flow:
+
+```text
+STAGING.ORIGINAL_HEADLINE
+        ↓
+updated_headline_macro.sql
+        ↓
+calls translate_headline()
+        ↓
+macros/translate_headline.sql
+        ↓
+WAREHOUSE.UPDATED_HEADLINE_MACRO
+```
+
+---
+
+# 7. `macros/translate_headline.sql`
+
+This is the macro used by:
+
+```text
+updated_headline_macro.sql
+```
 
 Example:
 
@@ -48,171 +372,100 @@ Example:
 {% endmacro %}
 ```
 
-## What it does
-
-The macro checks a column value.
-
-If the value is:
-
-```text
-Data engineer
-```
-
-it changes it to:
-
-```text
-Junior data engineer
-```
-
-Otherwise, it keeps the original value.
-
----
-
-## How the model uses it
-
-Inside `updated_headline_macro.sql`:
-
-```sql
-{{ translate_headline('headline') }} AS updated_job_title
-```
-
-dbt finds the macro named:
-
-```text
-translate_headline
-```
-
-and inserts its SQL logic into the model.
-
-Conceptually:
+The connection is:
 
 ```text
 updated_headline_macro.sql
         ↓
-calls translate_headline()
+{{ translate_headline('headline') }}
         ↓
-dbt finds macros/translate_headline.sql
-        ↓
-dbt inserts the CASE logic
-        ↓
-Snowflake runs the final SQL
+macros/translate_headline.sql
 ```
 
-This makes the transformation reusable.
+Important:
+
+The filename can technically be different, but the macro name must match:
+
+```sql
+{% macro translate_headline(column) %}
+```
+
+and:
+
+```sql
+{{ translate_headline('headline') }}
+```
+
+These names must match exactly.
+
+If dbt says:
+
+```text
+'translate_headline' is undefined
+```
+
+check:
+
+```text
+macros/translate_headline.sql
+```
 
 ---
 
-# 2. `string_utils.sql`
+# 8. `macros/string_utils.sql`
 
-This file contains another reusable macro:
+This file contains:
 
 ```sql
 {% macro capitalize_first_letter(column) %}
-
-    case
-        when {{ column }} is null
-        then null
-
-        else upper(substr({{ column }}, 1, 1))
-             || lower(substr({{ column }}, 2))
-    end
-
-{% endmacro %}
 ```
 
-## What it does
+It is a different macro.
 
-It formats text so that:
-
-```text
-DATA ENGINEER
-```
-
-could become:
-
-```text
-Data engineer
-```
-
-The macro:
-
-1. keeps `NULL` values as `NULL`
-2. makes the first letter uppercase
-3. makes the rest lowercase
-
-You can use it in a model like this:
+Example use:
 
 ```sql
 {{ capitalize_first_letter('headline') }}
 ```
 
-If you are not calling this macro in any model yet, it simply stays available for future use.
+If no model calls it, it does nothing during your current transformation.
+
+It simply stays available for future models.
+
+Connection:
+
+```text
+model.sql
+    ↓
+{{ capitalize_first_letter(...) }}
+    ↓
+macros/string_utils.sql
+```
 
 ---
 
-# 3. `generate_schema_name.sql`
+# 9. `macros/generate_schema_name.sql`
 
-This macro changes how dbt creates schema names.
+This macro affects **where dbt creates models**.
 
-Your `profiles.yml` uses:
-
-```text
-schema: warehouse
-```
-
-and your `dbt_project.yml` may contain:
-
-```yaml
-staging:
-  +schema: staging
-
-refined:
-  +schema: warehouse
-```
-
-By default, dbt may combine these names.
-
-For example:
+Without it, dbt can combine:
 
 ```text
-warehouse + staging
-        ↓
+default schema from profiles.yml
++
+custom schema from dbt_project.yml
+```
+
+and produce:
+
+```text
 WAREHOUSE_STAGING
-```
-
-and:
-
-```text
-warehouse + warehouse
-        ↓
 WAREHOUSE_WAREHOUSE
 ```
 
-The custom `generate_schema_name` macro changes that behavior.
+Your custom macro changes that behavior.
 
-Example:
-
-```sql
-{% macro generate_schema_name(custom_schema_name, node) -%}
-
-    {%- set default_schema = target.schema -%}
-
-    {%- if custom_schema_name is none -%}
-
-        {{ default_schema }}
-
-    {%- else -%}
-
-        {{ custom_schema_name | trim }}
-
-    {%- endif -%}
-
-{%- endmacro %}
-```
-
-With this macro, dbt uses the schema name you explicitly configure.
-
-So:
+With it:
 
 ```yaml
 +schema: staging
@@ -236,207 +489,280 @@ becomes:
 WAREHOUSE
 ```
 
-instead of creating:
+So this macro connects to:
 
 ```text
-WAREHOUSE_STAGING
-WAREHOUSE_WAREHOUSE
+profiles.yml
+        +
+dbt_project.yml
+        ↓
+generate_schema_name.sql
+        ↓
+final Snowflake schema name
+```
+
+It does not transform your job-title data.
+
+It changes dbt's schema naming behavior.
+
+---
+
+# 10. The full connection map
+
+This is the most important diagram.
+
+```text
+                    API
+                     │
+                     ▼
+          dlt_code/load_job_ads.py
+                     │
+                     ▼
+     JOB_ADS.STAGING.DATA_FIELD_JOB_ADS
+                     │
+                     ▼
+       models/staging/original_headline.sql
+                     │
+                     ▼
+       STAGING.ORIGINAL_HEADLINE
+               │              │
+               │              │
+               ▼              ▼
+ updated_headline.sql   updated_headline_macro.sql
+               │              │
+               │              ▼
+               │      translate_headline()
+               │              │
+               │              ▼
+               │   macros/translate_headline.sql
+               │              │
+               ▼              ▼
+WAREHOUSE.UPDATED_HEADLINE   WAREHOUSE.UPDATED_HEADLINE_MACRO
+```
+
+And separately:
+
+```text
+profiles.yml
+     +
+dbt_project.yml
+     ↓
+generate_schema_name.sql
+     ↓
+Controls schema names:
+STAGING / WAREHOUSE
 ```
 
 ---
 
-# How macros affect the dbt process
+# 11. `ref()` vs macro vs source table
 
-Without macros:
+These three things are easy to mix up.
 
-```text
-Raw Snowflake table
-        ↓
-dbt model
-        ↓
-SQL logic written directly inside the model
-        ↓
-Snowflake
+## Direct Snowflake table
+
+```sql
+FROM job_ads.staging.data_field_job_ads
 ```
 
-With macros:
+Means:
 
-```text
-Raw Snowflake table
-        ↓
-dbt model
-        ↓
-model calls a macro
-        ↓
-dbt finds the macro
-        ↓
-dbt inserts the reusable SQL logic
-        ↓
-Snowflake runs the final SQL
-```
-
-The macro itself does not usually create a table or view.
-
-Instead, it helps dbt **build the SQL** that will be sent to Snowflake.
+> Read directly from a real Snowflake table.
 
 ---
-
-# How macros fit into this project
-
-Your current flow is:
-
-```text
-JobTech API
-    ↓
-dlt
-    ↓
-JOB_ADS.STAGING.DATA_FIELD_JOB_ADS
-    ↓
-original_headline.sql
-    ↓
-updated_headline.sql
-    ↓
-updated_headline_macro.sql
-```
-
-The macro version works like this:
-
-```text
-original_headline
-        ↓
-updated_headline_macro.sql
-        ↓
-translate_headline()
-        ↓
-CASE transformation
-        ↓
-WAREHOUSE.UPDATED_HEADLINE_MACRO
-```
-
-The `generate_schema_name` macro works separately in the background and controls **where dbt creates models**.
-
----
-
-# `ref()` vs macro
-
-These are related to dbt, but they do different jobs.
 
 ## `ref()`
-
-Example:
 
 ```sql
 {{ ref('original_headline') }}
 ```
 
-This means:
+Means:
 
-> Use another dbt model as the source.
+> Read from another dbt model.
 
-It also creates a dependency between models.
-
-Example:
+Think:
 
 ```text
-original_headline
-        ↓
-updated_headline
+MODEL → MODEL
 ```
 
 ---
 
 ## Macro
 
-Example:
-
 ```sql
 {{ translate_headline('headline') }}
 ```
 
-This means:
+Means:
 
-> Run reusable SQL logic here.
+> Insert reusable SQL logic here.
 
-So:
+Think:
 
 ```text
-ref()   = connects dbt models together
-
-macro   = reuses SQL logic
+MODEL → SQL LOGIC
 ```
 
 ---
 
-# Why macros are useful
+# 12. What happens when you run `dbt run`
 
-Macros help you:
+When you run:
 
-- avoid repeating SQL
-- keep transformation logic consistent
-- make models easier to read
-- reuse the same logic in many models
-- change logic in one place instead of many files
+```bash
+dbt run
+```
 
-This follows the DRY principle:
+dbt roughly does this:
 
 ```text
-DRY = Don't Repeat Yourself
+1. Read profiles.yml
+   ↓
+Connect to Snowflake
+
+2. Read dbt_project.yml
+   ↓
+Understand model folders and schemas
+
+3. Read models/
+   ↓
+Find SQL models
+
+4. Read macros/
+   ↓
+Find reusable Jinja/SQL logic
+
+5. Resolve ref()
+   ↓
+Work out model dependencies
+
+6. Resolve macro calls
+   ↓
+Insert macro SQL into models
+
+7. Compile everything into normal SQL
+   ↓
+Send SQL to Snowflake
+
+8. Snowflake creates tables/views
 ```
 
 ---
 
-# Simple mental model
+# 13. Where should I look when something breaks?
 
-Think of dbt like this:
+Use this checklist.
 
-```text
-MODEL
-"What data should I build?"
-
-REF()
-"Which dbt model does this depend on?"
-
-MACRO
-"What reusable SQL logic should I insert?"
-
-SNOWFLAKE
-"Run the final SQL."
-```
-
----
-
-# In your project
-
-These macros currently have different responsibilities:
-
-| Macro | Purpose |
+| Problem | File/place to check |
 |---|---|
-| `translate_headline()` | Changes specific job-title values |
-| `capitalize_first_letter()` | Formats text capitalization |
-| `generate_schema_name()` | Controls the Snowflake schema names dbt creates |
-
-The first two are **transformation macros**.
-
-`generate_schema_name()` is a **dbt behavior/configuration macro** because it changes how dbt decides schema names.
+| API data is missing | `dlt_code/load_job_ads.py` |
+| dlt cannot connect to Snowflake | `.dlt/secrets.toml` |
+| Raw Snowflake table has 0 rows | dlt pipeline / API query |
+| `dbt debug` fails | `~/.dbt/profiles.yml` |
+| dbt creates models in wrong schema | `dbt_project.yml` + `generate_schema_name.sql` |
+| dbt says model not found | Check `ref()` and model filename |
+| dbt says macro is undefined | Check `macros/` and macro name |
+| Transformation result is wrong | Check model SQL or transformation macro |
+| `original_headline` is empty | Check `DATA_FIELD_JOB_ADS` first |
+| Downstream models are empty | Check the upstream model first |
 
 ---
 
-# Key takeaway
+# 14. Debug from upstream to downstream
 
-A dbt macro is reusable SQL logic written with Jinja.
+Always debug in this order:
 
-You define it once:
-
-```sql
-{% macro my_macro(...) %}
-    ...
-{% endmacro %}
+```text
+1. Did API return data?
+        ↓
+2. Did dlt load it?
+        ↓
+3. Does the raw Snowflake table have rows?
+        ↓
+4. Does the first dbt staging model have rows?
+        ↓
+5. Do refined models have rows?
+        ↓
+6. Are macros producing the expected transformation?
 ```
 
-and call it with:
+For this project:
 
-```sql
-{{ my_macro(...) }}
+```text
+DATA_FIELD_JOB_ADS
+        ↓
+ORIGINAL_HEADLINE
+        ↓
+UPDATED_HEADLINE
+        ↓
+UPDATED_HEADLINE_MACRO
 ```
 
-dbt then compiles the macro into normal SQL before sending the query to Snowflake.
+If `DATA_FIELD_JOB_ADS` has 0 rows, everything below it will also have 0 rows.
+
+---
+
+# 15. The easiest mental model
+
+Think of each file as having one job:
+
+```text
+load_job_ads.py
+= Get data into Snowflake
+
+secrets.toml
+= Tell dlt how to connect
+
+profiles.yml
+= Tell dbt how to connect
+
+dbt_project.yml
+= Tell dbt how the project should behave
+
+original_headline.sql
+= First transformation model
+
+ref()
+= Connect one dbt model to another
+
+translate_headline.sql
+= Reusable transformation logic
+
+string_utils.sql
+= Extra reusable text logic
+
+generate_schema_name.sql
+= Control dbt schema naming
+```
+
+---
+
+# Final takeaway
+
+The most important thing is to follow the dependency chain.
+
+For this project:
+
+```text
+API
+↓
+dlt
+↓
+Snowflake raw table
+↓
+dbt staging model
+↓
+ref()
+↓
+dbt refined model
+↓
+macro
+↓
+final transformed result
+```
+
+When something fails, do not check every file at once.
+
+Start from the top of the chain and move downward until you find the first place where the data or configuration is wrong.
