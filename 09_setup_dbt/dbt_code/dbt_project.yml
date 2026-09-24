@@ -33,7 +33,7 @@ models:
   dbt_code:
     # Config indicated by + and applies to all files under models/example/
     staging:
-      + schema: staging
+      +schema: staging
       +materialized: table
     refined:
       +schema: warehouse
