@@ -7,4 +7,4 @@ SELECT
     headline
 
 -- Reads the data from the job ads table
-FROM job_ads.staging.data_field_job_ads;
+FROM job_ads.staging.data_field_job_ads

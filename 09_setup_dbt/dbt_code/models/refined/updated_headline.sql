@@ -31,4 +31,4 @@ SELECT
     END AS job_title
 
 -- Use the temporary staging_data result created above
-FROM staging_data;
+FROM staging_data
