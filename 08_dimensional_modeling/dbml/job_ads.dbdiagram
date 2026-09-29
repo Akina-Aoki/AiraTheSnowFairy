@@ -1,0 +1,40 @@
+{
+  "version": "3.0.0",
+  "darkMode": true,
+  "gridEnabling": false,
+  "currentViewName": null,
+  "defaultView": {
+    "detailLevel": "All",
+    "relationshipMode": "All",
+    "tablePositions": [
+      {
+        "name": "fct_job_ads",
+        "schemaName": "public",
+        "x": 644.96142578125,
+        "y": 12
+      },
+      {
+        "name": "dim_job_details",
+        "schemaName": "public",
+        "x": 165.13230793840842,
+        "y": -109.96445173967757
+      },
+      {
+        "name": "dim_employer",
+        "schemaName": "public",
+        "x": 152.97337239153342,
+        "y": 302.1110078064229
+      },
+      {
+        "name": "dim_auxilliary_attributes",
+        "schemaName": "public",
+        "x": 1018.8788035242248,
+        "y": 111.140011528562
+      }
+    ],
+    "tableGroupCollapseStates": [],
+    "stickyNoteLayouts": [],
+    "referencePaths": []
+  },
+  "views": {}
+}
