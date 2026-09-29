@@ -26,7 +26,7 @@ def query_job_listings(query="SELECT * FROM mart_technical_jobs"):
     # SNOWFLAKE_USER=...
     # SNOWFLAKE_PASSWORD=...
     # SNOWFLAKE_ACCOUNT=...
-    load_dotenv()
+    load_dotenv(override=True)
 
     # Open a connection to Snowflake.
     #
@@ -60,3 +60,7 @@ def query_job_listings(query="SELECT * FROM mart_technical_jobs"):
         # For example:
         # jobs_df = query_job_listings()
         return df
+
+if __name__ == "__main__":
+    df = query_job_listings()
+    print(df.head())
