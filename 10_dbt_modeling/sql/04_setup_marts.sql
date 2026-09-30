@@ -11,6 +11,8 @@ CREATE SCHEMA IF NOT EXISTS marts;
 -- Check that the marts schema was created.
 SHOW SCHEMAS IN DATABASE job_ads;
 
+SHOW TABLES IN SCHEMA staging;
+
 
 
 
