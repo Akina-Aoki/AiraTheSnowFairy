@@ -9,21 +9,8 @@ with stg_job_ads as (
 )
 
 select
-
-    occupation__label,   # occupation_id
-
-    job_details_id,
-
-    employer_id,
-
-    auxillary_attributes_id,
-
-    number_of_vacancies as vacancies,  -- rename to a simpler column name
-
-    relevance,
-
-    application_deadline
-
+    id as job_ads_id,
+    experience_required,
+    driving_license_required as driver_license,
+    access_to_own_car
 from stg_job_ads
-
-order by application_deadline
