@@ -14,9 +14,15 @@ with job_ads as (
 
 select
 
-    {{ dbt_utils.generate_surrogate_key(['occupation__label']) }} as occupation_id,
     -- Creates a stable surrogate key from the occupation label.
     -- This key can be used to connect this fact model to an occupation dimension.
+    {{ dbt_utils.generate_surrogate_key(['occupation__label']) }} as occupation_id,
+
+    {{ dbt_utils.generate_surrogate_key(['job_details_id'])}},
+
+    {{ dbt_utils.generate_surrogate_key(['employer_id'])}},
+
+    {{ dbt_utils.generate_surrogate_key(['auxillary_attributes_id'])}},
 
     vacancies,              -- number of available positions
 

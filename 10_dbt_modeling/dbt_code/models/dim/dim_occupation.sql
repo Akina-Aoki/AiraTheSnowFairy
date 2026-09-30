@@ -2,6 +2,7 @@
 -- src_occupation itself comes from the source table defined in sources.yml,
 -- so the data flow is: Snowflake source -> src_occupation -> this model.
 --
+-- ref() is dbt's own function.
 -- ref('src_occupation') tells dbt that this model depends on src_occupation.
 -- dbt_utils.generate_surrogate_key() comes from the dbt_utils package
 -- installed with `dbt deps` and creates a stable generated ID.
@@ -20,7 +21,7 @@ select
     {{ dbt_utils.generate_surrogate_key(['occupation']) }} as occupation_id,
     -- Creates a surrogate key from the occupation name.
 
-    occupation,
+    occupation,     -- originally from occupation__label
 
     max(occupation_group) as occupation_group,
 
