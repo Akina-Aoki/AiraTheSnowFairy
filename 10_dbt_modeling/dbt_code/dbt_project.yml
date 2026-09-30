@@ -44,3 +44,4 @@ models:
 
     mart:                     # DBT models resides here
       +schema: marts
+      +materialized: view   # change to only view for marts
