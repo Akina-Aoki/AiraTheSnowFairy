@@ -30,7 +30,7 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   dbt_code:
-    +materialized: table
+    +materialized: table    # the default is table if materialization is not given
 
     src:    # materialized = temporary      src = testing on src data to make sure data from src is validated before moving on so pipeline don't break
       +materialized: ephemeral
