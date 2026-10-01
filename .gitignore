@@ -41,6 +41,17 @@ logs/
 exercises/exercise1/dlt_code/03_setup_user.sql
 
 
+#Streamlit Lecture
+# Environment variables / secrets
+.env
+**/.env
+.env.*
+**/.env.*
+
+# Local credential setup SQL
+12_dashboard_streamlit/sql/01_setup_user_reporter.sql
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,12 +1,8 @@
 -- NOTE: you should .gitignore this file as it contains credentials
 USE ROLE useradmin;
 
-ALTER USER reporter
-SET PASSWORD = '';
-
-
+-- Password is managed separately and must never be committed to Git.
 CREATE USER IF NOT EXISTS reporter
-    PASSWORD = '' -- create and fill in password
     LOGIN_NAME = 'reporter'
     DEFAULT_WAREHOUSE = dev_wh
     DEFAULT_NAMESPACE = 'job_ads.marts'
