@@ -27,3 +27,8 @@ Modern Data Stack Lectture Repo: dlt, dbt, dagster, snowflake, python, azure, st
 
 ## Confirm that dlt is installed.
 `dlt --version`
+
+
+### Resources: 
+- [The missing piece of the modern data stack] (https://benn.substack.com/p/metrics-layer?utm_source=share&utm_medium=android&r=39x4sr)
+
