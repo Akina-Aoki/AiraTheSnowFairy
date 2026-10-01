@@ -10,18 +10,12 @@ with stg_job_ads as (
 
 select
 
-    occupation__label,   # occupation_id
-
-    job_details_id,
-
-    employer_id,
-
-    auxillary_attributes_id,
-
+    id as job_ads_id,
+    occupation__label,
+    employer__workplace as employer_workplace,
+    workplace_address__municipality as workplace_municipality,
     number_of_vacancies as vacancies,  -- rename to a simpler column name
-
     relevance,
-
     application_deadline
 
 from stg_job_ads

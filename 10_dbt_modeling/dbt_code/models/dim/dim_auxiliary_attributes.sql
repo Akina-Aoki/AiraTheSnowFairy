@@ -4,7 +4,7 @@ with src_auxiliary_attributes as (
 )
 
 select distinct
-    {{ dbt_utils.generate_surrogate_key(['job_ad_id']) }} as  auxiliary_attributes_id,
+    {{ dbt_utils.generate_surrogate_key(['job_ads_id']) }} as  auxiliary_attributes_id,
     experience_required,
     driver_license,
     access_to_own_car

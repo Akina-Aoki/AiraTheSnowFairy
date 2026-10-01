@@ -14,6 +14,9 @@ with src_job_details as (
 
 )
 
+--  The distinct keyword removes duplicate rows based on all selected columns.
+
+-- The generate_surrogate_key macro creates a deterministic hashed identifier from each job advertisement ID
 select distinct
     {{ dbt_utils.generate_surrogate_key(['job_ad_id']) }} as job_details_id,
     headline,

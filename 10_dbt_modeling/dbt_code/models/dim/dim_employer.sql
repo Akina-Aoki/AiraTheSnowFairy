@@ -15,10 +15,7 @@ with src_employer as (
 
 select
 -- Creates a surrogate key from the employer name.
-    {{ dbt_utils.generate_surrogate_key([
-        'employer_workplace',
-        'workplace_municipality'
-    ])}} as employer_id,
+    {{ dbt_utils.generate_surrogate_key(['employer_workplace', 'workplace_municipality'])}} as employer_id,
     max(employer_name) as employer_name,
     employer_workplace,
     max(employer_organization_number) as employer_organization_number,
