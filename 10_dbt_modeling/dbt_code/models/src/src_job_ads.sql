@@ -10,7 +10,7 @@ with stg_job_ads as (
 
 select
 
-    id as job_ads_id,
+    id as job_details_id,
     occupation__label,
     employer__workplace as employer_workplace,
     workplace_address__municipality as workplace_municipality,

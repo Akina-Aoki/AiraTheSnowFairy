@@ -18,12 +18,12 @@ select
     -- This key can be used to connect this fact model to an occupation dimension.
     {{ dbt_utils.generate_surrogate_key(['occupation__label']) }} as occupation_id,
 
-    {{ dbt_utils.generate_surrogate_key(['job_details_id'])}},
+    {{ dbt_utils.generate_surrogate_key(['job_details_id']) }} as job_details_id,
 
     -- The business gets to decide what columns consists of 'employer_id'. They have decided that it's 'employer_workplace' and 'workplace_municipality'.
-    {{ dbt_utils.generate_surrogate_key(['employer_workplace', 'workplace_municipality'])}} as employer_id,
+    {{ dbt_utils.generate_surrogate_key(['employer_workplace', 'workplace_municipality']) }} as employer_id,
 
-    {{ dbt_utils.generate_surrogate_key(['job_ads_id'])}} as auxillary_attributes_id,
+    {{ dbt_utils.generate_surrogate_key(['job_details_id']) }} as auxiliary_attributes_id,
 
     vacancies,              -- number of available positions
 

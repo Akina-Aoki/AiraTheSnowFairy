@@ -18,14 +18,16 @@ select
     {{ dbt_utils.generate_surrogate_key(['employer_workplace', 'workplace_municipality'])}} as employer_id,
     max(employer_name) as employer_name,
     employer_workplace,
-    max(employer_organization_number) as employer_organization_number,
-    max(workplace_street_address) as workplace_street_address,
-    max(workplace_region) as workplace_region,
-    max(workplace_postcode) as workplace_postcode,
+    max(coalesce(employer_organization_number, 'missing organisation number')) as employer_organization_number,
+    max(coalesce(workplace_street_address, 'no name given')) as workplace_street_address,
+    max(coalesce(workplace_region, 'no region given')) as workplace_region,
+    max(coalesce(workplace_postcode, 'no address given')) as workplace_postcode,
     workplace_municipality as workplace_city,
-    max(workplace_country) as workplace_country
+    max(coalesce(workplace_country, 'no country given')) as workplace_country
 
 from src_employer
 
-group by employer_workplace, workplace_municipality
+group by
+    employer_workplace,
+    workplace_municipality
 
