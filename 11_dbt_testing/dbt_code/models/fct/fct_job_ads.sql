@@ -5,23 +5,14 @@
 -- dbt_utils.generate_surrogate_key() comes from the dbt_utils package,
 -- which was installed with `dbt deps`.
 
-with job_ads as (
-
-    select *
-    from {{ ref('src_job_ads') }}   -- upstream dbt model
-
-)
+with job_ads as (select * from {{ ref('src_job_ads') }}) -- upstream dbt model
 
 select
-
     {{ dbt_utils.generate_surrogate_key(['occupation__label']) }} as occupation_id,
-    -- Creates a stable surrogate key from the occupation label.
-    -- This key can be used to connect this fact model to an occupation dimension.
-
-    vacancies,              -- number of available positions
-
-    relevance,              -- relevance score from the source data
-
-    application_deadline    -- deadline for applying
-
+    {{ dbt_utils.generate_surrogate_key(['id']) }} as job_details_id,
+    {{ dbt_utils.generate_surrogate_key(['employer__workplace', 'workplace_address__municipality']) }}
+    as employer_id,
+    vacancies,
+    relevance,
+    application_deadline
 from job_ads
