@@ -61,6 +61,11 @@ as employer_id,
 {{ dbt_utils.generate_surrogate_key(['id']) }} as auxilliary_attributes_id,
 ```
 
+## Tests done in class
+- Dbt test 1- Generic data tests provided by dbt by default. [https://docs.getdbt.com/docs/build/data-tests?version=2]
+- Dbt test 2 - Generic data tests provide by a dbt package, i.e. dbt expectations[https://github.com/calogica/dbt-expectations/tree/main].
+- Dbt test 3 - Singular data tests written by yourself and put under the `tests` subfolder.
+
 ## Other videos :video_camera:
 
 From Kahan data solutions:

@@ -24,9 +24,15 @@ packages:
     version: 0.10.3
 ```
 
-Now run `dbt deps` to install the dependencies.
+- Now run `dbt deps` to install the dependencies.
+- Create `schema.yml` with the tests.
 
-## Generic data tests
+## Tests done in class
+- Dbt test 1- Generic data tests provided by dbt by default. [https://docs.getdbt.com/docs/build/data-tests?version=2]
+- Dbt test 2 - Generic data tests provide by a dbt package, i.e. dbt expectations[https://github.com/calogica/dbt-expectations/tree/main].
+- Dbt test 3 - Singular data tests written by yourself and put under the `tests` subfolder.
+
+### Generic data tests
 
 Generic data tests are built-in tests in dbt. With the package `dbt_expectation`, there are more choices of built-in tests for use. An alternative is to write your own singular data tests (.sql files) under *test* directory. For generic data tests, add a file called *schema.yml* under the *models* directory as below:
 
