@@ -1,50 +1,312 @@
-# Explanation of this yaml in documentations/11_schema_yaml_explaain.md
-models:
-  - name: fct_job_ads
-    description: "The facts are relevance and vacancies."
+version: 2
 
+# staging schema
+models:
+  - name: src_job_ads
+    description: >-
+      Staging view with one row per job advertisement and the fields needed to
+      build the job-ad fact table. It renames selected columns from the raw API
+      table but otherwise keeps their source values.
+    columns:
+      - name: job_details_id
+        description: Natural job-advertisement identifier supplied by the JobTech API.
+        data_tests:
+          - unique
+          - not_null
+      - name: occupation__label
+        description: Occupation label assigned to the advertisement; used to build the occupation key.
+      - name: employer_workplace
+        description: Employer workplace name used with municipality to identify an employer location.
+      - name: workplace_municipality
+        description: Municipality of the advertised workplace.
+      - name: vacancies
+        description: Number of positions offered by the advertisement.
+      - name: relevance
+        description: JobTech search relevance score, on a scale from 0 to 1.
+      - name: application_deadline
+        description: Last date on which candidates may apply for the advertised job.
+
+  - name: src_job_details
+    description: >-
+      Staging view with one row per job advertisement and its descriptive job,
+      contract, salary, and workload details from the raw API table.
+    columns:
+      - name: job_ad_id
+        description: Natural job-advertisement identifier supplied by the JobTech API.
+        data_tests:
+          - unique
+          - not_null
+      - name: headline
+        description: Short title displayed for the job advertisement.
+      - name: description
+        description: Plain-text description of the advertised role.
+      - name: description_html_formatted
+        description: Formatted version of the job description, which may contain HTML markup.
+      - name: employment_type
+        description: Source-provided category describing the employment arrangement.
+      - name: duration
+        description: Source-provided category describing how long the employment is expected to last.
+      - name: salary_type
+        description: Source-provided category describing how salary is stated or paid.
+      - name: scope_of_work_min
+        description: Minimum advertised workload or working-time percentage.
+      - name: scope_of_work_max
+        description: Maximum advertised workload or working-time percentage.
+
+  - name: src_auxiliary_attributes
+    description: >-
+      Staging view with one row per job advertisement and optional requirement
+      flags concerning experience, a driving licence, and access to a car.
+    columns:
+      - name: job_ads_id
+        description: Natural job-advertisement identifier supplied by the JobTech API.
+        data_tests:
+          - unique
+          - not_null
+      - name: experience_required
+        description: Source flag indicating whether previous work experience is required.
+      - name: driver_license
+        description: Source flag indicating whether the applicant needs a driving licence.
+      - name: access_to_own_car
+        description: Source flag indicating whether the applicant needs access to a car.
+
+  - name: src_employer
+    description: >-
+      Staging view of employer and workplace attributes from every job
+      advertisement. An employer workplace can occur in many rows because it
+      may publish more than one advertisement.
+    columns:
+      - name: employer_name
+        description: Name of the organization advertising the position.
+      - name: employer_workplace
+        description: Name of the employer's workplace or local site.
+      - name: employer_organization_number
+        description: Source organization number for the employer, when supplied.
+      - name: workplace_street_address
+        description: Street address of the workplace, when supplied.
+      - name: workplace_region
+        description: Region in which the workplace is located.
+      - name: workplace_postcode
+        description: Postal code of the workplace.
+      - name: workplace_municipality
+        description: Municipality in which the workplace is located.
+      - name: workplace_country
+        description: Country in which the workplace is located.
+
+  - name: src_occupation
+    description: >-
+      Staging view of occupation classifications attached to job advertisements.
+      Occupations repeat here because many advertisements can share the same
+      classification.
+    columns:
+      - name: occupation_group_id
+        description: Source concept identifier for the occupation group.
+      - name: occupation_field_id
+        description: Source concept identifier for the broad occupation field.
+      - name: occupation
+        description: Detailed occupation label assigned to the advertisement.
+      - name: occupation_group
+        description: Group-level occupation label containing the detailed occupation.
+      - name: occupation_field
+        description: Broadest occupation-field label in the source classification.
+
+    # warehouse schema
+  - name: dim_occupation
+    description: >-
+      Occupation dimension with one row per occupation label. It supplies the
+      occupation hierarchy used to group and filter job-ad facts.
     columns:
       - name: occupation_id
-        description: "Foreign key, a surrogate key generated for each unique occupation."
+        description: Primary surrogate key generated from the occupation label.
         data_tests:
-          - relationships:
-              to: ref('dim_occupation')
-              field: occupation_id
-      - name: relevance
+          - unique
+          - not_null
+      - name: occupation
+        description: Detailed occupation label represented by this dimension row.
         data_tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0  
-              max_value: 1 
-
-          - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: float
-      - name: vacancies
-        data_tests: 
-          - dbt_expectations.expect_column_quantile_values_to_be_between:
-              quantile: .99
-              min_value: 1
-              max_value: 20
-          
-          - dbt_expectations.expect_column_max_to_be_between:
-              min_value: 1
-              max_value: 20
-              config:
-                severity: warn
-
-          - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: number
-            
-  - name: dim_occupation
-    description: "The dimension is a collection of unique occupation"
-
-  - name: dim_auxiliary_attributes
-    description: 
+          - unique
+          - not_null
+      - name: occupation_group
+        description: Group-level classification of the occupation.
+      - name: occupation_field
+        description: Broadest field-level classification of the occupation.
 
   - name: dim_employer
-    description: 
+    description: >-
+      Employer-location dimension with one row for each distinct combination of
+      workplace name and municipality. Missing optional address attributes are
+      replaced with explanatory placeholder text by the model.
+    columns:
+      - name: employer_id
+        description: Primary surrogate key generated from workplace name and municipality.
+        data_tests:
+          - unique
+          - not_null
+      - name: employer_name
+        description: Name of the employer associated with this workplace.
+      - name: employer_workplace
+        description: Workplace name that forms part of the dimension's business key.
+      - name: employer_organization_number
+        description: Employer organization number, or a placeholder when it was not supplied.
+      - name: workplace_street_address
+        description: Workplace street address, or a placeholder when it was not supplied.
+      - name: workplace_region
+        description: Workplace region, or a placeholder when it was not supplied.
+      - name: workplace_postcode
+        description: Workplace postal code, or a placeholder when it was not supplied.
+      - name: workplace_city
+        description: Municipality of the workplace and part of the dimension's business key.
+      - name: workplace_country
+        description: Workplace country, or a placeholder when it was not supplied.
 
   - name: dim_job_details
-    description: 
-    
+    description: >-
+      Job-details dimension with descriptive and contract attributes for each
+      advertisement. Its generated key joins one set of details to the job-ad fact.
+    columns:
+      - name: job_details_id
+        description: Primary surrogate key generated from the source job-advertisement identifier.
+        data_tests:
+          - unique
+          - not_null
+      - name: headline
+        description: Short title displayed for the job advertisement.
+      - name: description
+        description: Plain-text description of the advertised role.
+      - name: description_html_formatted
+        description: Formatted version of the job description, which may contain HTML markup.
+      - name: employment_type
+        description: Source-provided employment arrangement category.
+      - name: duration
+        description: Source-provided category for the expected employment duration.
+      - name: salary_type
+        description: Source-provided category for how salary is stated or paid.
+      - name: scope_of_work_min
+        description: Minimum advertised workload or working-time percentage.
+      - name: scope_of_work_max
+        description: Maximum advertised workload or working-time percentage.
 
-   # TODO: more tests ...
+  - name: dim_auxiliary_attributes
+    description: >-
+      Auxiliary job-ad dimension with requirement flags for experience, a
+      driving licence, and access to a car. It has one row per advertisement.
+    columns:
+      - name: auxiliary_attributes_id
+        description: Primary surrogate key generated from the source job-advertisement identifier.
+        data_tests:
+          - unique
+          - not_null
+      - name: experience_required
+        description: Source flag indicating whether previous work experience is required.
+      - name: driver_license
+        description: Source flag indicating whether the applicant needs a driving licence.
+      - name: access_to_own_car
+        description: Source flag indicating whether the applicant needs access to a car.
+
+  - name: fct_job_ads
+    description: >-
+      Fact table at one row per job advertisement. It connects each ad to its
+      occupation, employer, job details, and auxiliary attributes and stores the
+      measurable vacancy count and relevance score.
+    columns:
+      - name: occupation_id
+        description: Mandatory foreign key identifying the advertisement's occupation.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_occupation')
+                field: occupation_id
+      - name: job_details_id
+        description: >-
+          Primary key at the fact table's job-ad grain and foreign key to the
+          matching descriptive job-details row.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_job_details')
+                field: job_details_id
+      - name: employer_id
+        description: Mandatory foreign key identifying the employer workplace and municipality.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_employer')
+                field: employer_id
+      - name: auxiliary_attributes_id
+        description: Mandatory foreign key to the advertisement's requirement flags.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_auxiliary_attributes')
+                field: auxiliary_attributes_id
+      - name: vacancies
+        description: Number of open positions offered by the advertisement.
+        data_tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 1
+          - dbt_expectations.expect_column_quantile_values_to_be_between:
+              arguments:
+                quantile: 0.99
+                min_value: 1
+                max_value: 20
+          - dbt_expectations.expect_column_max_to_be_between:
+              arguments:
+                min_value: 1
+                max_value: 20
+              config:
+                severity: warn
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              arguments:
+                column_type: number
+      - name: relevance
+        description: JobTech search relevance score, expected to be between 0 and 1.
+        data_tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              arguments:
+                column_type: float
+      - name: application_deadline
+        description: Last date on which candidates may apply for the advertised job.
+
+   # marts schema
+  - name: mart_technical_jobs
+    description: >-
+      Beginner-friendly reporting view of vacancy and relevance measures with
+      occupation labels for jobs in the technical occupation field. Each row
+      represents one technical job advertisement.
+    columns:
+      - name: vacancies
+        description: Number of open positions offered by the advertisement.
+        data_tests:
+          - not_null
+      - name: relevance
+        description: JobTech search relevance score inherited from the fact table.
+        data_tests:
+          - not_null
+      - name: occupation
+        description: Detailed occupation label for the advertisement.
+        data_tests:
+          - not_null
+      - name: occupation_group
+        description: Group-level classification of the occupation.
+      - name: occupation_field
+        description: Broad occupation field; this mart deliberately keeps only technical jobs.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Yrken med teknisk inriktning
+      - name: application_deadline
+        description: Last date on which candidates may apply for the advertised job.

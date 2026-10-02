@@ -32,5 +32,14 @@ models:
               column_type: number
             
 
-          
-   # TODO: more tests ...
+  - name: dim_occupation
+    description: "The dimension is a collection of unique occupation"
+
+  - name: dim_auxiliary_attributes
+    description: Contains auxiliary attributes associated with each job advertisement."
+
+  - name: dim_employer
+    description: "Contains employer-related information for job advertisements."
+
+  - name: dim_job_details
+    description: "Contains descriptive details and attributes about each job advertisement."
