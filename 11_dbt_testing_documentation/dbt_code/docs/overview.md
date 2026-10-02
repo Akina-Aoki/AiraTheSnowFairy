@@ -2,10 +2,13 @@
 
 # Job Ads Project
 
-This is the Job Ads Project's documentation. Take a look at the dimensional model before moving onto lineage and the different models.
+This project turns raw technical-field job advertisements into three dimensions, a
+fact-style job-ad table, and a reporting mart. The source models are ephemeral and
+prepare fields for the teacher's dimensional-modeling implementation shown below.
 
 > **Note:**  
-> The dbt generic tests are in `schema.yml` inside the `models` folder.
+> Model and column documentation and generic data tests are in `models/schema.yml`.
+> The project also keeps its singular relevance test in `tests/check_relevance_value.sql`.
 
 ## Dimensional Model
 

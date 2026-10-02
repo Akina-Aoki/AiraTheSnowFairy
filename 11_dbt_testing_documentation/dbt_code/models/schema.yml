@@ -1,45 +1,221 @@
-# Explanation of this yaml in documentations/11_schema_yaml_explaain.md
+version: 2
+
 models:
+# staging schema
+  - name: src_job_ads
+    description: "Ephemeral extract of the raw fields used to build the job-ad fact table. Its grain is one row per source job advertisement."
+    columns:
+      - name: id
+        description: "Identifier of the job advertisement in the source data."
+      - name: employer__workplace
+        description: "Source workplace name used, together with municipality, to derive the employer key."
+      - name: workplace_address__municipality
+        description: "Source workplace municipality used, together with workplace name, to derive the employer key."
+      - name: occupation__label
+        description: "Source occupation label used to derive the occupation key."
+      - name: vacancies
+        description: "Number of vacancies advertised in the source posting."
+      - name: relevance
+        description: "Source relevance score for the advertisement."
+      - name: application_deadline
+        description: "Last date on which an application can be submitted."
+
+  - name: src_employer
+    description: "Ephemeral extract of employer and workplace attributes from the raw job advertisements. Its grain remains one row per source advertisement."
+    columns:
+      - name: employer_organization_number
+        description: "Organization number supplied for the employer."
+      - name: employer_name
+        description: "Name of the employer."
+      - name: employer_workplace
+        description: "Name of the workplace, used with municipality to identify a dimension row."
+      - name: workplace_country
+        description: "Country of the workplace address."
+      - name: workplace_region
+        description: "Region of the workplace address."
+      - name: workplace_municipality
+        description: "Municipality of the workplace, used with workplace name to identify a dimension row."
+      - name: workplace_city
+        description: "City of the workplace address."
+      - name: workplace_postcode
+        description: "Postal code of the workplace address."
+      - name: employer_url
+        description: "Website URL supplied for the employer."
+
+  - name: src_job_details
+    description: "Ephemeral extract of descriptive and employment-related fields for each source job advertisement."
+    columns:
+      - name: id
+        description: "Source job-advertisement identifier used to derive the job-details key."
+      - name: headline
+        description: "Headline of the job advertisement."
+      - name: description
+        description: "Plain-text advertisement description."
+      - name: description_html
+        description: "Formatted advertisement description from the source."
+      - name: employment_type
+        description: "Source label describing the type of employment."
+      - name: duration
+        description: "Source label describing the employment duration."
+      - name: salary_type
+        description: "Source label describing how salary is expressed."
+      - name: working_hours_type
+        description: "Source label describing the working-hours arrangement."
+      - name: scope_of_work_min
+        description: "Lower bound of the advertised scope of work."
+      - name: scope_of_work_max
+        description: "Upper bound of the advertised scope of work."
+
+  - name: src_occupation
+    description: "Ephemeral extract of occupation labels and their group and field classifications from each source advertisement."
+    columns:
+      - name: occupation_group_id
+        description: "Concept identifier for the source occupation group."
+      - name: occupation_field_id
+        description: "Concept identifier for the source occupation field."
+      - name: occupation
+        description: "Occupation label assigned to the advertisement."
+      - name: occupation_group
+        description: "Broader occupation group label."
+      - name: occupation_field
+        description: "Highest-level occupation field label."
+
+# warehouse schema
   - name: fct_job_ads
+    description: "Fact-style table at one row per job advertisement, containing dimension keys and the advertisement's measurable and date fields."
     columns:
       - name: occupation_id
+        description: "Surrogate key derived from the occupation label for joining to dim_occupation."
         data_tests:
+          - not_null
           - relationships:
-              to: ref('dim_occupation')
-              field: occupation_id
-      - name: relevance
+              arguments:
+                to: ref('dim_occupation')
+                field: occupation_id
+      - name: job_details_id
+        description: "Surrogate key derived from the source advertisement identifier for joining to dim_job_details."
         data_tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0  
-              max_value: 1 
-
-          - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: float
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_job_details')
+                field: job_details_id
+      - name: employer_id
+        description: "Surrogate key derived from workplace name and municipality for joining to dim_employer."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_employer')
+                field: employer_id
       - name: vacancies
-        data_tests: 
+        description: "Number of vacancies advertised in the posting."
+        data_tests:
           - dbt_expectations.expect_column_quantile_values_to_be_between:
-              quantile: .99
-              min_value: 1
-              max_value: 20
-          
+              arguments:
+                quantile: .99
+                min_value: 1
+                max_value: 20
           - dbt_expectations.expect_column_max_to_be_between:
-              min_value: 1
-              max_value: 20
+              arguments:
+                min_value: 1
+                max_value: 20
               config:
                 severity: warn
-
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: number
-            
+              arguments:
+                column_type: number
+      - name: relevance
+        description: "Relevance score for the job advertisement, expected to be between zero and one."
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              arguments:
+                column_type: float
+      - name: application_deadline
+        description: "Last date on which an application can be submitted."
 
   - name: dim_occupation
-    description: "The dimension is a collection of unique occupation"
-
-  - name: dim_auxiliary_attributes
-    description: Contains auxiliary attributes associated with each job advertisement."
+    description: "Occupation dimension with one row per occupation label and its associated occupation group and field."
+    columns:
+      - name: occupation_id
+        description: "Surrogate primary key generated from the occupation label."
+        data_tests:
+          - not_null
+          - unique
+      - name: occupation
+        description: "Occupation label used as the dimension's business-level identifier."
+      - name: occupation_group
+        description: "Broader group associated with the occupation."
+      - name: occupation_field
+        description: "Highest-level field associated with the occupation."
 
   - name: dim_employer
-    description: "Contains employer-related information for job advertisements."
+    description: "Employer dimension with one row per generated workplace-and-municipality key and cleaned employer and location attributes."
+    columns:
+      - name: employer_id
+        description: "Surrogate primary key generated from workplace name and municipality."
+        data_tests:
+          - not_null
+          - unique
+      - name: employer_organization_number
+        description: "Employer organization number, with missing values replaced by a Swedish placeholder."
+      - name: employer_name
+        description: "Employer name, with missing values replaced by a Swedish placeholder."
+      - name: employer_workplace
+        description: "Workplace name, with missing values replaced by a Swedish placeholder."
+      - name: workplace_country
+        description: "Country of the workplace."
+      - name: workplace_region
+        description: "Region of the workplace."
+      - name: workplace_municipality
+        description: "Municipality of the workplace."
+      - name: workplace_city
+        description: "Capitalized workplace city, falling back to municipality and then a placeholder."
+      - name: employer_url
+        description: "Employer website URL, with missing values replaced by a Swedish placeholder."
 
   - name: dim_job_details
-    description: "Contains descriptive details and attributes about each job advertisement."
+    description: "Job-details dimension at one row per source advertisement, containing descriptive and employment attributes."
+    columns:
+      - name: job_details_id
+        description: "Surrogate primary key generated from the source advertisement identifier."
+        data_tests:
+          - not_null
+          - unique
+      - name: headline
+        description: "Headline of the job advertisement."
+      - name: description
+        description: "Plain-text advertisement description."
+      - name: description_html
+        description: "Formatted advertisement description from the source."
+      - name: duration
+        description: "Employment duration, with missing values replaced by a Swedish placeholder."
+      - name: salary_type
+        description: "Label describing how salary is expressed."
+      - name: working_hours_type
+        description: "Working-hours arrangement, with missing values replaced by a Swedish placeholder."
+      - name: scope_of_work_min
+        description: "Lower bound of the advertised scope of work."
+      - name: scope_of_work_max
+        description: "Upper bound of the advertised scope of work."
+
+  - name: mart_technical_jobs
+    description: "Reporting view of job advertisements whose occupation belongs to the technical occupation field, enriched with occupation labels."
+    columns:
+      - name: vacancies
+        description: "Number of vacancies advertised in the posting."
+      - name: relevance
+        description: "Relevance score carried from the job-ad fact table."
+      - name: occupation
+        description: "Occupation label for the advertised job."
+      - name: occupation_group
+        description: "Broader group associated with the occupation."
+      - name: occupation_field
+        description: "Occupation field used by this mart to retain technical jobs."
+      - name: application_deadline
+        description: "Last date on which an application can be submitted."
