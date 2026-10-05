@@ -23,7 +23,7 @@ select
 
     occupation,     -- originally from occupation__label
 
-    max(occupation_group) as occupation_group,
+    max(occupation_group) as occupation_group,  -- one row per unique occupation
 
     max(occupation_field) as occupation_field
 

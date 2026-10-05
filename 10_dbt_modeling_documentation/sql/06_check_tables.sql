@@ -1,3 +1,4 @@
+USE DATABASE job_ads;
 SHOW TABLES IN SCHEMA staging;
 
 

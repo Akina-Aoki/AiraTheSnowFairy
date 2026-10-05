@@ -1,7 +1,7 @@
 # AiraTheSnowFairy
 Modern Data Stack Lectture Repo: dlt, dbt, dagster, snowflake, python, azure, streamlit
 
-![Architecture](assets/AIRASNOWFAIRY_architecture.png)
+![Architecture](assets/jobadsarchitecture.png)
 - **Setting up the dlt password is in the lecture video 4:15**
 
 | Package                      | Used for                          |
@@ -27,6 +27,10 @@ Modern Data Stack Lectture Repo: dlt, dbt, dagster, snowflake, python, azure, st
 
 ## Confirm that dlt is installed.
 `dlt --version`
+
+
+## Dimensional Modeling (from class)
+![Model](assets/job_ads_dimension_model.png)
 
 
 ### Resources: 
