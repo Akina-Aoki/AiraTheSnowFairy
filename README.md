@@ -63,6 +63,8 @@ The root-level [`exercises`](exercises/) and [`documentations`](documentations/)
 | Dagster | Coordinates dlt and dbt assets and demonstrates jobs, schedules, sensors, and monitoring. |
 | Git / GitHub | Tracks the learning work and organizes it as a navigable course repository. |
 
+## Youtube Explanation Video
+[![Watch the video](https://img.youtube.com/vi/AVvQHou9-gM/maxresdefault.jpg)](https://www.youtube.com/watch?v=AVvQHou9-gM&t=818s)
 ## How the Parts Connect
 
 ```text
