@@ -9,7 +9,8 @@
 
 from pathlib import Path
 import dlt
-import dagster as dg
+# used for orchestration of assets, jobs, schedules, sensors, defintions
+import dagster as dg 
 from dagster_dlt import DagsterDltResource, dlt_assets
 from dagster_dbt import DbtCliResource, DbtProject, dbt_assets
 
@@ -60,15 +61,19 @@ dbt_project_directory = Path(__file__).parents[1] / "data_transformation"
 profiles_dir = Path.home() / ".dbt"  
 
 # instance of DbtProject with all necessary paths
+# describes where the dbt project is
 dbt_project = DbtProject(project_dir=dbt_project_directory,
                          profiles_dir=profiles_dir)
 
 # an instance from the dbt resource class to run dbt codes
+# gives Dagster the ability to run dbt
 dbt_resource = DbtCliResource(project_dir=dbt_project)
 
 # produce the manifest file
 # the manifest file let dagster understand the dependency between models
 dbt_project.prepare_if_dev()
+
+
 
 # create dbt asset
 @dbt_assets(manifest=dbt_project.manifest_path,) # path to the dbt manifest.json
