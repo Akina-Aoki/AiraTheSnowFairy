@@ -14,3 +14,6 @@ sources:
     # Other dbt models can keep using the same source name: `stg_ads`.
       - name: stg_ads        # dbt name we will use to refer/rename to this table
         identifier: technical_field_job_ads  # Actual table name in Snowflake
+        meta:   # describes the corresponding dasgster asset for this dbt source
+          dagster:
+            asset_key: ['dlt_jobads_source_jobads_resource']
