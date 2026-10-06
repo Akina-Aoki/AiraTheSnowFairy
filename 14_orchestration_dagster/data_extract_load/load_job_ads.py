@@ -21,9 +21,8 @@ def _get_ads(url_for_search, params):
     return json.loads(response.content.decode("utf8"))
 
 
-@dlt.resource(table_name = "job_ads",
-              write_disposition="replace",
-              )
+@dlt.resource(table_name = "job_ads", write_disposition="replace")
+
 def jobads_resource(params):
 
     url = "https://jobsearch.api.jobtechdev.se"
