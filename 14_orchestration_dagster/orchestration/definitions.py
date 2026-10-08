@@ -1,21 +1,30 @@
-# ==================== #
-#                      #
-#       imports        #
-#                      #
-# ==================== #
-# this file is used for running dagster locally
-# here we create a single file as a dagster script
-# alternatively, one can create a package for your dagster scripts
+"""Describe the data pipeline and tell Dagster how to run it.
+
+An *asset* is a piece of data produced by a pipeline step. Dagster tracks when
+each asset is updated and which other assets depend on it.
+
+End-to-end flow:
+1. The DLT asset uses ``jobads_source`` to fetch job ads and load them into the
+   ``staging`` dataset in Snowflake.
+2. Dagster records the DLT asset as materialized (successfully updated).
+3. The asset sensor notices that update and requests the dbt job.
+4. dbt builds the selected models, transforming the staged data into
+   downstream warehouse and mart models.
+
+The DLT job is also scheduled to run daily at 13:15 UTC. Dagster's sensor and
+scheduler need to be running for those automatic triggers to be evaluated.
+"""
 
 from pathlib import Path
 import dlt
-# used for orchestration of assets, jobs, schedules, sensors, defintions
+# Dagster provides the objects used below to define assets, jobs, and automation.
 import dagster as dg 
 from dagster_dlt import DagsterDltResource, dlt_assets
 from dagster_dbt import DbtCliResource, DbtProject, dbt_assets
 
-# to import dlt script from another folder outside the orchestration folder
-# this part is not needed if you create a package for your dagster scripts
+# Make the sibling data_extract_load folder importable, then reuse its DLT
+# source here. This relative path is interpreted from the process's working
+# directory when Dagster starts.
 import sys
 sys.path.insert(0, '../data_extract_load')
 from load_job_ads import jobads_source
@@ -23,17 +32,21 @@ from load_job_ads import jobads_source
  
 # ==================== #
 #                      #
-#       dlt Asset      #
+#       DLT Asset      #
 #                      #
 # ==================== #
-# the creation requires a local secrets.toml for snowflake connection 
-# pipeline definition is moved here
+# DLT uses the Snowflake credentials configured in the local secrets.toml file.
+# Keep credentials out of this script; the pipeline reads them from DLT config.
 
-# an instance from the dlt resource class to run dlt codes
+# A Dagster resource is a configured helper that an asset can use while running.
+# Dagster supplies this object to dlt_load through its ``dlt`` parameter.
 dlt_resource = DagsterDltResource() 
 
-# create dlt asset 
+# This decorator turns the DLT source into Dagster asset(s). It also connects
+# the source to a DLT pipeline, which controls the pipeline name, destination
+# dataset (schema), and where the data is loaded.
 @dlt_assets(
+    # The source contains the code that fetches job ads from the API.
     dlt_source = jobads_source(),
     dlt_pipeline = dlt.pipeline(
         pipeline_name="jobsearch",
@@ -41,53 +54,67 @@ dlt_resource = DagsterDltResource()
         destination="snowflake",
     ),
 )
-# note the use of dependency injection so that dagster framework constructs instances 
-# of necessary classes needed to produce the asset: one for meta data, another for running dlt codes
-def dlt_load(context: dg.AssetExecutionContext, dlt: DagsterDltResource): 
+def dlt_load(context: dg.AssetExecutionContext, dlt: DagsterDltResource):
+    """Run DLT and report its results to Dagster.
+
+    ``context`` contains information about this Dagster run. ``dlt`` is the
+    injected DLT resource. Yielding the run results lets Dagster record the
+    produced asset and display the load events in its UI.
+    """
     yield from dlt.run(context=context) 
 
 
 # ==================== #
 #                      #
-#       dbt Asset      #
+#       dbt Assets     #
 #                      #
 # ==================== #
-# this dbt asset needs dbt_packages pre-installed by 'dbp deps'
-# note the update in schema.yml
+# dbt transforms data already loaded into the warehouse; it does not fetch the
+# source ads itself. Install the dbt project's required packages before running
+# this code (for example, with ``dbt deps``).
 
-# Points to the dbt project path
+# Find the dbt project relative to this file. The profile directory is in the
+# current user's home folder and usually contains connection settings.
 dbt_project_directory = Path(__file__).parents[1] / "data_transformation"
-# Define the path to your profiles.yml file (in your home directory)
 profiles_dir = Path.home() / ".dbt"  
 
-# instance of DbtProject with all necessary paths
-# describes where the dbt project is
+# This object tells the Dagster dbt integration where the project and profiles
+# are located, and provides access to project metadata such as the manifest.
 dbt_project = DbtProject(project_dir=dbt_project_directory,
                          profiles_dir=profiles_dir)
 
-# an instance from the dbt resource class to run dbt codes
-# gives Dagster the ability to run dbt
+# The CLI resource is Dagster's configured way to invoke dbt commands.
+# Dagster injects it into dbt_models through the ``dbt`` parameter.
 dbt_resource = DbtCliResource(project_dir=dbt_project)
 
-# produce the manifest file
-# the manifest file let dagster understand the dependency between models
+# Prepare the dbt manifest when developing locally. The manifest lists models
+# and their relationships so Dagster can represent them as assets and order
+# dependent work correctly.
 dbt_project.prepare_if_dev()
 
 
 
-# create dbt asset
+# Turn the models in the manifest into Dagster assets. This lets Dagster track
+# model updates and dependencies alongside the DLT-produced asset.
 @dbt_assets(manifest=dbt_project.manifest_path,) # path to the dbt manifest.json
-# note the dependency injection similar to that in dlt asset
 def dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
-    yield from dbt.cli(["build"], context=context).stream() # stream() is for showing the progress realtime in dagster UI
+    """Run ``dbt build`` and stream command events back to Dagster.
+
+    ``dbt build`` builds and tests the selected dbt resources. Streaming the
+    events allows Dagster to show progress and the final results in its UI.
+    """
+    yield from dbt.cli(["build"], context=context).stream()
 
 
 # ==================== #
 #                      #
-#         Job          #
+#         Jobs         #
 #                      #
 # ==================== #
 
+# A job is a runnable selection of assets. ``job_dlt`` selects the DLT asset
+# by its Dagster asset key. ``job_dbt`` selects dbt assets whose keys begin
+# with either ``warehouse`` or ``marts``.
 job_dlt = dg.define_asset_job("job_dlt", selection=dg.AssetSelection.keys("dlt_jobads_source_jobads_resource"))
 job_dbt = dg.define_asset_job("job_dbt", selection=dg.AssetSelection.key_prefixes("warehouse", "marts"))
 
@@ -97,7 +124,8 @@ job_dbt = dg.define_asset_job("job_dbt", selection=dg.AssetSelection.key_prefixe
 #                      #
 # ==================== #
 
-#schedule for the first job
+# The cron expression is minute hour day-of-month month day-of-week. This one
+# runs job_dlt every day at 13:15 UTC; it does not directly schedule the dbt job.
 schedule_dlt = dg.ScheduleDefinition(
     job=job_dlt,
     cron_schedule="15 13 * * *" #UTC
@@ -105,14 +133,17 @@ schedule_dlt = dg.ScheduleDefinition(
 
 # ==================== #
 #                      #
-#        Sensor        #
+#    Asset Sensor      #
 #                      #
 # ==================== #
 
-#sensor for the second job
+# Watch for successful updates to the DLT asset. When Dagster observes one,
+# it requests the downstream dbt job. The asset key must match the key produced
+# by the DLT integration (source name plus resource name).
 @dg.asset_sensor(asset_key=dg.AssetKey("dlt_jobads_source_jobads_resource"),
                  job_name="job_dbt")
 def dlt_load_sensor():
+    """Return a run request that tells Dagster to start ``job_dbt``."""
     yield dg.RunRequest()
 
 # ==================== #
@@ -121,7 +152,12 @@ def dlt_load_sensor():
 #                      #
 # ==================== #
 
-# Dagster object that contains the dbt assets and resource
+# Bundle the definitions Dagster needs to load this pipeline:
+# - assets describe the DLT load and dbt transformations;
+# - resources provide the DLT and dbt integrations those assets use;
+# - jobs define runnable asset selections;
+# - the schedule and sensor define automatic triggers.
+# Dagster loads this object as the entry point for this code location.
 defs = dg.Definitions(
                     assets=[dlt_load, dbt_models], 
                     resources={"dlt": dlt_resource,
@@ -130,4 +166,3 @@ defs = dg.Definitions(
                     schedules=[schedule_dlt],
                     sensors=[dlt_load_sensor],
                     )
-

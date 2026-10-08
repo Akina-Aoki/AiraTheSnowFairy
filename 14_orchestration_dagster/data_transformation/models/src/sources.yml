@@ -14,6 +14,14 @@ sources:
     # Other dbt models can keep using the same source name: `stg_ads`.
       - name: stg_ads        # dbt name we will use to refer/rename to this table
         identifier: technical_field_job_ads  # Actual table name in Snowflake
-        meta:   # describes the corresponding dasgster asset for this dbt source
+        # adds extra metadata to this dbt source. 
+        # The nested dagster key tells the Dagster–dbt integration how to connect the source to a Dagster asset.
+        # describes the corresponding dasgster asset for this dbt source
+        meta:   
+          # names the Dagster asset that produces this source "dagster"
           dagster:
-            asset_key: ['dlt_jobads_source_jobads_resource']
+            # This key should match the key of the DLT asset defined in definitions.py.
+            # Dagster can represent dbt models that use this source as downstream of the DLT asset, helping it understand lineage and dependencies.
+            asset_key: ['dlt_jobads_source_jobads_resource']  
+
+        
