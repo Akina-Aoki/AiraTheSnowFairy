@@ -112,10 +112,27 @@ def dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
 #                      #
 # ==================== #
 
-# A job is a runnable selection of assets. ``job_dlt`` selects the DLT asset
-# by its Dagster asset key. ``job_dbt`` selects dbt assets whose keys begin
-# with either ``warehouse`` or ``marts``.
+"""
+Define a Dagster job named ``job_dlt``. Defining the job does not run it;
+it tells Dagster what to execute when the job is launched by a user or trigger.
+
+``AssetSelection.keys(...)`` selects only the asset with this exact key.
+That key is created for the DLT job-ads source/resource and represents the step
+that fetches the ads and loads them into Snowflake. The schedule below uses this job, 
+so each scheduled run executes that selected asset.
+"""
 job_dlt = dg.define_asset_job("job_dlt", selection=dg.AssetSelection.keys("dlt_jobads_source_jobads_resource"))
+
+
+
+"""
+Define a Dagster job named ``job_dbt``. It runs the selected dbt assets when started by Dagster; 
+# defining it here does not run the models immediately.
+``key_prefixes`` selects every asset whose key starts with either ``warehouse`` or ``marts``. 
+These prefixes identify the downstream dbt models to build,
+rather than the DLT asset that loads the raw job ads. 
+The sensor below starts this job after Dagster observes that the DLT asset has been updated.
+"""
 job_dbt = dg.define_asset_job("job_dbt", selection=dg.AssetSelection.key_prefixes("warehouse", "marts"))
 
 # ==================== #
@@ -124,8 +141,10 @@ job_dbt = dg.define_asset_job("job_dbt", selection=dg.AssetSelection.key_prefixe
 #                      #
 # ==================== #
 
-# The cron expression is minute hour day-of-month month day-of-week. This one
-# runs job_dlt every day at 13:15 UTC; it does not directly schedule the dbt job.
+# The cron expression is minute hour day-of-month month day-of-week. 
+# This one runs job_dlt every day at 13:15 UTC; it does not directly schedule the dbt job.
+# UTC time is the default to work with internally by developers. 
+# Timestamp usually isn't shown in the marts layer.
 schedule_dlt = dg.ScheduleDefinition(
     job=job_dlt,
     cron_schedule="15 13 * * *" #UTC

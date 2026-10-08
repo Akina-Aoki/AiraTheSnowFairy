@@ -26,6 +26,9 @@ With dagster, a data pipeline orchestration is built by components of ```asset``
 dagster components: 
 [![dagster components](https://github.com/kokchun/assets/blob/main/data_warehouse/dagster_components.png?raw=true)](https://docs.dagster.io/getting-started/concepts)
 
+Assests Sensor VS Jobs Sensor:
+- [Integrating Jobs with Assets and Vice Versa.](https://blog.rmhogervorst.nl/blog/2024/10/29/dagster-integrating-jobs-with-assets-and-vice-versa/)
+
 
 ### Asset
 - a logical unit of data like a database table, a csv file, a png file etc...
